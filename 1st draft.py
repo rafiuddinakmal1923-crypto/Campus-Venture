@@ -247,10 +247,33 @@ def draw_hud(img, body_text, hand_action, cam_action, fps,
                        cv.FONT_HERSHEY_SIMPLEX, 0.42, (200, 200, 200), 1)
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
-cap = cv.VideoCapture(0)
+
+# ── Camera selection ──────────────────────────────────────────────────────────
+# 0 = built-in laptop camera
+# 1 = first external webcam  <- try this first
+# 2 = second external webcam (if 1 doesn't work)
+CAMERA_INDEX = 1
+
+cap = cv.VideoCapture(CAMERA_INDEX)
+
+if not cap.isOpened():
+    print(f"Camera {CAMERA_INDEX} not found. Scanning available cameras...")
+    for i in range(5):
+        test = cv.VideoCapture(i)
+        if test.isOpened():
+            print(f"  Camera index {i} is available")
+            test.release()
+    print("Update CAMERA_INDEX at the top of the script to match yours.")
+    print("Falling back to camera 0.\n")
+    cap = cv.VideoCapture(0)
+
 cap.set(cv.CAP_PROP_FRAME_WIDTH,  640)
 cap.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
 cap.set(cv.CAP_PROP_FPS, 30)
+
+# ── Resizable window ──────────────────────────────────────────────────────────
+cv.namedWindow('Fall Guys Controller', cv.WINDOW_NORMAL)
+cv.resizeWindow('Fall Guys Controller', 640, 480)
 
 print("=== Fall Guys Gesture Controller ===")
 print("  Forward (W)   → Right hand OPEN")
@@ -334,9 +357,9 @@ while True:
         # are already from the user's perspective — no swap needed.
         # User tilts LEFT  → left ear drops  → LEFT_EAR Y increases  → tilt_raw positive → cam LEFT
         # User tilts RIGHT → right ear drops → RIGHT_EAR Y increases → tilt_raw negative → cam RIGHT
-        l_ear_y = lms[mp_pose.PoseLandmark.RIGHT_EAR].y
-        r_ear_y = lms[mp_pose.PoseLandmark.LEFT_EAR].y
-        tilt_raw = l_ear_y - r_ear_y
+        user_left_ear_y  = lms[mp_pose.PoseLandmark.RIGHT_EAR].y
+        user_right_ear_y = lms[mp_pose.PoseLandmark.LEFT_EAR].y
+        tilt_raw = user_left_ear_y - user_right_ear_y
         head_val = head_s.update(tilt_raw)
 
         if head_val > HEAD_TILT_THRESHOLD:
