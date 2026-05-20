@@ -1,0 +1,2104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MEMIC — AI Meme Machine</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  --neon-pink: #ff2d78;
+  --neon-cyan: #00f5ff;
+  --neon-green: #39ff14;
+  --neon-purple: #bf5fff;
+  --neon-yellow: #ffe600;
+  --neon-orange: #ff6b00;
+  --bg-deep: #080810;
+  --bg-mid: #0d0d1a;
+  --glass: rgba(255,255,255,0.04);
+  --glass-border: rgba(255,255,255,0.10);
+  --text-bright: #f0f0ff;
+  --text-dim: rgba(240,240,255,0.5);
+  --glow-pink: 0 0 20px rgba(255,45,120,0.5), 0 0 60px rgba(255,45,120,0.2);
+  --glow-cyan: 0 0 20px rgba(0,245,255,0.5), 0 0 60px rgba(0,245,255,0.2);
+  --glow-green: 0 0 20px rgba(57,255,20,0.5);
+  --radius: 20px;
+  --radius-sm: 12px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Space Mono', monospace;
+  background: var(--bg-deep);
+  color: var(--text-bright);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 20%, rgba(191,95,255,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(255,45,120,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 50% 50%, rgba(0,245,255,0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(0,245,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,255,0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* ─── HEADER ─── */
+.header {
+  position: relative; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px;
+  background: rgba(8,8,16,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 900; font-size: 26px; letter-spacing: -1px;
+  background: linear-gradient(90deg, var(--neon-pink), var(--neon-cyan));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.logo-sub {
+  font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--text-dim); margin-top: 2px;
+}
+
+.header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.btn {
+  font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 8px 14px; border-radius: var(--radius-sm);
+  border: none; cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+}
+.btn:hover { transform: scale(1.06); }
+.btn:active { transform: scale(0.96); }
+
+.btn-ghost {
+  background: var(--glass); border: 1px solid var(--glass-border);
+  color: var(--text-bright);
+}
+.btn-ghost:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: var(--glow-cyan); }
+
+.btn-neon {
+  background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+  color: #fff; box-shadow: 0 0 18px rgba(255,45,120,0.35);
+}
+.btn-neon:hover { box-shadow: var(--glow-pink); }
+
+.btn-cyan {
+  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-green));
+  color: #000; font-weight: 700;
+}
+
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--neon-green); box-shadow: var(--glow-green);
+  animation: pulse-dot 2s infinite; flex-shrink: 0;
+}
+.status-dot.off { background: #333; box-shadow: none; animation: none; }
+@keyframes pulse-dot {
+  0%,100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.6; }
+}
+
+/* ─── LAYOUT ─── */
+.app-layout {
+  position: relative; z-index: 5;
+  display: grid; grid-template-columns: 1fr 370px;
+  gap: 18px; padding: 18px 24px;
+  max-width: 1420px; margin: 0 auto;
+}
+
+/* ─── CAM PANEL ─── */
+.cam-panel { display: flex; flex-direction: column; gap: 14px; }
+
+.cam-container {
+  position: relative; border-radius: var(--radius);
+  overflow: hidden; background: #000;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 0 0 1px rgba(0,245,255,0.08), 0 24px 48px rgba(0,0,0,0.6);
+  aspect-ratio: 4/3;
+}
+
+#webcam, #output-canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+}
+#webcam { transform: scaleX(-1); }
+#output-canvas { z-index: 2; }
+
+.cam-overlay-ui {
+  position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  display: flex; flex-direction: column; justify-content: space-between; padding: 14px;
+}
+
+.cam-top-bar { display: flex; align-items: center; gap: 8px; }
+
+.rec-badge {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,45,120,0.5); border-radius: 20px;
+  padding: 5px 12px; font-size: 10px; letter-spacing: 2px;
+  color: var(--neon-pink); font-weight: 700;
+}
+
+.gesture-label {
+  margin-left: auto; background: rgba(0,0,0,0.7); backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border); border-radius: 20px;
+  padding: 5px 14px; font-size: 10px; color: var(--neon-cyan);
+  letter-spacing: 1px; transition: all 0.25s ease;
+  max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.cam-bottom-bar { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.detect-chip {
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border); border-radius: 20px;
+  padding: 4px 10px; font-size: 9px; letter-spacing: 1px;
+  color: var(--text-dim); transition: all 0.3s ease;
+}
+.detect-chip.active {
+  border-color: var(--neon-green); color: var(--neon-green);
+  box-shadow: 0 0 8px rgba(57,255,20,0.3);
+}
+
+/* ─── MEME POPUP ─── */
+#meme-popup {
+  position: absolute; z-index: 20; pointer-events: none;
+  display: none; transform-origin: center center;
+  filter: drop-shadow(0 0 0px transparent);
+}
+#meme-popup.show {
+  display: block;
+  animation: meme-slam 0.5s cubic-bezier(0.22,1.4,0.36,1) forwards;
+}
+#meme-popup.hide { animation: meme-yeet 0.35s cubic-bezier(0.55,0,1,0.45) forwards; }
+
+@keyframes meme-slam {
+  0%   { transform: scale(0.1) rotate(-18deg); opacity: 0; filter: brightness(3) saturate(3); }
+  60%  { transform: scale(1.12) rotate(3deg);  opacity: 1; filter: brightness(1.4) saturate(2); }
+  80%  { transform: scale(0.95) rotate(-1deg); filter: brightness(1); }
+  100% { transform: scale(1)    rotate(0deg);  opacity: 1; filter: brightness(1) saturate(1); }
+}
+@keyframes meme-yeet {
+  0%   { transform: scale(1) rotate(0deg)  translateY(0);   opacity: 1; }
+  100% { transform: scale(0.5) rotate(20deg) translateY(-60px); opacity: 0; }
+}
+
+/* Idle wiggle while popup is shown */
+.meme-card {
+  background: rgba(8,8,16,0.92); backdrop-filter: blur(24px);
+  border: 3px solid var(--neon-pink); border-radius: 18px;
+  padding: 8px;
+  box-shadow: var(--glow-pink), 0 24px 60px rgba(0,0,0,0.8),
+              inset 0 1px 0 rgba(255,255,255,0.08);
+  animation: card-wiggle 0.6s 0.5s ease both;
+  position: relative; overflow: visible;
+}
+@keyframes card-wiggle {
+  0%  { transform: rotate(0deg); }
+  20% { transform: rotate(-3deg) scale(1.03); }
+  40% { transform: rotate(3deg)  scale(1.03); }
+  60% { transform: rotate(-2deg); }
+  80% { transform: rotate(2deg); }
+  100%{ transform: rotate(0deg); }
+}
+
+/* Rainbow shimmer border */
+.meme-card::before {
+  content: '';
+  position: absolute; inset: -3px;
+  border-radius: 20px;
+  background: linear-gradient(90deg,
+    var(--neon-pink), var(--neon-cyan), var(--neon-green),
+    var(--neon-purple), var(--neon-yellow), var(--neon-pink));
+  background-size: 300% 100%;
+  animation: border-rainbow 1s linear infinite;
+  z-index: -1; opacity: 0;
+  transition: opacity 0.2s;
+}
+.meme-card.rainbow::before { opacity: 1; }
+@keyframes border-rainbow { to { background-position: -300% 0; } }
+
+.meme-card img {
+  display: block; border-radius: 12px;
+  max-height: 220px; object-fit: contain; background: #000;
+  width: 100%;
+}
+
+/* ─── SCREEN FLASH ─── */
+#screen-flash {
+  position: absolute; inset: 0; z-index: 19;
+  border-radius: var(--radius);
+  pointer-events: none; opacity: 0;
+}
+#screen-flash.flash { animation: do-flash 0.35s ease-out forwards; }
+@keyframes do-flash {
+  0%   { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+
+/* ─── WINDOW HUD (countdown + confidence) ─── */
+#window-hud {
+  position: absolute; inset: 0; z-index: 22;
+  pointer-events: none; display: none;
+  align-items: center; justify-content: center;
+  flex-direction: column; gap: 0;
+}
+#window-hud.active { display: flex; }
+
+/* Countdown ring — SVG-based circle */
+#countdown-ring-wrap {
+  position: relative; width: 120px; height: 120px;
+  flex-shrink: 0;
+}
+#countdown-ring-wrap svg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  transform: rotate(-90deg);
+}
+#countdown-track {
+  fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 6;
+}
+#countdown-arc {
+  fill: none; stroke: var(--neon-cyan); stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 339.3; /* 2π×54 */
+  stroke-dashoffset: 0;
+  transition: stroke 0.2s ease;
+  filter: drop-shadow(0 0 6px var(--neon-cyan));
+}
+#countdown-num {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif; font-size: 38px; font-weight: 900;
+  color: #fff; text-shadow: 0 0 20px var(--neon-cyan);
+}
+
+/* Confidence bar + leading gesture label */
+#confidence-wrap {
+  background: rgba(0,0,0,0.72); backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-border); border-radius: 14px;
+  padding: 10px 16px; width: 220px; margin-top: 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+#confidence-gesture-row {
+  display: flex; align-items: center; gap: 8px;
+}
+#confidence-emoji { font-size: 20px; }
+#confidence-name  {
+  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 800;
+  color: var(--text-bright); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#confidence-pct {
+  font-size: 11px; font-weight: 700; color: var(--neon-cyan); min-width: 36px; text-align: right;
+}
+#confidence-bar-bg {
+  height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;
+}
+#confidence-bar-fill {
+  height: 100%; width: 0%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-green));
+  box-shadow: 0 0 8px rgba(0,245,255,0.6);
+  transition: width 0.18s ease, background 0.3s ease;
+}
+
+/* ─── EMOJI RAIN ─── */
+.emoji-rain {
+  position: absolute; z-index: 18; pointer-events: none;
+  font-size: 28px; line-height: 1;
+  animation: emoji-fall linear forwards;
+  top: -40px;
+}
+@keyframes emoji-fall {
+  0%   { transform: translateY(0)   rotate(0deg)   scale(1);   opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(110%) rotate(360deg) scale(0.6); opacity: 0; }
+}
+
+/* ─── COMBO COUNTER ─── */
+#combo-counter {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  z-index: 25; pointer-events: none;
+  font-family: 'Syne', sans-serif; font-weight: 900;
+  font-size: 28px; letter-spacing: -1px;
+  background: linear-gradient(135deg, var(--neon-yellow), var(--neon-orange));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 12px rgba(255,230,0,0.9));
+  display: none;
+  animation: combo-pop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes combo-pop {
+  0%   { transform: translateX(-50%) scale(0.4); }
+  100% { transform: translateX(-50%) scale(1); }
+}
+
+/* ─── TRIGGER RIPPLE ─── */
+.trigger-ripple {
+  position: absolute; border-radius: 50%;
+  pointer-events: none; z-index: 17;
+  border: 3px solid var(--neon-cyan);
+  animation: ripple-out 0.7s ease-out forwards;
+}
+@keyframes ripple-out {
+  0%   { width: 20px; height: 20px; opacity: 0.9; margin: -10px; }
+  100% { width: 160px; height: 160px; opacity: 0; margin: -80px; }
+}
+
+/* ─── SCAN LINE + CORNERS ─── */
+.scan-line {
+  position: absolute; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+  z-index: 3; pointer-events: none; opacity: 0.45;
+  animation: scan 3.5s linear infinite;
+}
+@keyframes scan {
+  0% { top: 0; opacity: 0; }
+  5% { opacity: 0.45; }
+  95% { opacity: 0.45; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.cam-corner { position: absolute; width: 22px; height: 22px; z-index: 4; pointer-events: none; }
+.cam-corner::before, .cam-corner::after {
+  content: ''; position: absolute; background: var(--neon-cyan);
+  box-shadow: 0 0 6px rgba(0,245,255,0.8);
+}
+.cam-corner-tl { top: 10px; left: 10px; }
+.cam-corner-tl::before { top:0;left:0;width:100%;height:2px; }
+.cam-corner-tl::after  { top:0;left:0;width:2px;height:100%; }
+.cam-corner-tr { top: 10px; right: 10px; }
+.cam-corner-tr::before { top:0;right:0;width:100%;height:2px; }
+.cam-corner-tr::after  { top:0;right:0;width:2px;height:100%; }
+.cam-corner-bl { bottom: 10px; left: 10px; }
+.cam-corner-bl::before { bottom:0;left:0;width:100%;height:2px; }
+.cam-corner-bl::after  { bottom:0;left:0;width:2px;height:100%; }
+.cam-corner-br { bottom: 10px; right: 10px; }
+.cam-corner-br::before { bottom:0;right:0;width:100%;height:2px; }
+.cam-corner-br::after  { bottom:0;right:0;width:2px;height:100%; }
+
+/* ─── NO CAM ─── */
+.no-cam {
+  position: absolute; inset: 0; z-index: 8;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; background: rgba(8,8,16,0.97);
+}
+.no-cam-emoji { font-size: 52px; animation: float 3s ease-in-out infinite; }
+@keyframes float { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-10px);} }
+.no-cam-title { font-family:'Syne',sans-serif; font-size:20px; font-weight:900; }
+.no-cam-sub { font-size:11px; color:var(--text-dim); letter-spacing:.5px; }
+
+/* ─── STATS ROW ─── */
+.stats-row { display: flex; gap: 10px; }
+.stat-chip {
+  flex: 1; background: var(--glass); border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm); padding: 10px; text-align: center;
+}
+.stat-num {
+  font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 900;
+  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-pink));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.stat-label { font-size: 8px; letter-spacing: 1.5px; color: var(--text-dim); margin-top: 2px; }
+
+/* ─── TRIGGER FEED ─── */
+.trigger-feed {
+  max-height: 96px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 3px;
+  scrollbar-width: none;
+}
+.trigger-feed::-webkit-scrollbar { display: none; }
+.feed-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 10px; padding: 3px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  animation: feed-in 0.3s ease; color: var(--text-dim);
+}
+@keyframes feed-in { from{opacity:0;transform:translateX(-8px);} to{opacity:1;transform:translateX(0);} }
+.feed-emoji { font-size: 14px; }
+.feed-name { flex: 1; }
+.feed-time { color: rgba(255,255,255,0.2); font-size: 9px; }
+
+/* ─── CONTROLS PANEL ─── */
+.controls-panel { display: flex; flex-direction: column; gap: 12px; }
+
+.glass-card {
+  background: var(--glass); backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 16px;
+  transition: border-color 0.3s ease;
+}
+.glass-card:hover { border-color: rgba(255,255,255,0.14); }
+
+.card-title {
+  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 800;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim);
+  margin-bottom: 12px; display: flex; align-items: center; gap: 7px;
+}
+.card-title .ct-emoji { font-size: 15px; }
+
+/* ─── GESTURE LIST ─── */
+.gesture-list {
+  display: flex; flex-direction: column; gap: 5px;
+  max-height: 500px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--glass-border) transparent;
+}
+.gesture-list::-webkit-scrollbar { width: 3px; }
+.gesture-list::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 2px; }
+
+.gesture-item {
+  background: rgba(255,255,255,0.025); border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm); padding: 9px 11px;
+  display: flex; align-items: center; gap: 9px;
+  cursor: pointer; transition: all 0.18s ease;
+  position: relative; overflow: hidden;
+}
+.gesture-item::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: transparent; transition: background 0.25s ease;
+}
+.gesture-item:hover { background: rgba(255,255,255,0.055); border-color: rgba(255,255,255,0.14); }
+.gesture-item:hover::before { background: var(--neon-cyan); }
+.gesture-item.has-meme::before { background: var(--neon-purple); }
+.gesture-item.has-meme:hover::before { background: var(--neon-pink); }
+.gesture-item.triggered { animation: g-flash 0.45s ease; }
+@keyframes g-flash {
+  0% { background: rgba(255,45,120,0.25); border-color: var(--neon-pink); }
+  100% { background: rgba(255,255,255,0.025); border-color: var(--glass-border); }
+}
+
+.g-emoji { font-size: 17px; width: 26px; text-align: center; flex-shrink: 0; }
+.g-info { flex: 1; min-width: 0; }
+.g-name { font-size: 10px; font-weight: 700; color: var(--text-bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-desc { font-size: 8px; color: var(--text-dim); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-thumb { width: 30px; height: 30px; border-radius: 6px; object-fit: cover; border: 1px solid var(--glass-border); flex-shrink: 0; }
+.g-sound-icon { font-size: 11px; flex-shrink: 0; opacity: 0.7; }
+.g-edit-btn {
+  width: 24px; height: 24px; border-radius: 6px;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 11px; transition: all 0.18s ease; flex-shrink: 0;
+}
+.g-edit-btn:hover { background: rgba(255,255,255,0.1); border-color: var(--neon-cyan); }
+
+/* ─── SETTINGS ─── */
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px;
+}
+.toggle-label { font-size: 10px; color: var(--text-dim); letter-spacing: .4px; }
+.toggle {
+  width: 34px; height: 18px; background: rgba(255,255,255,0.08);
+  border-radius: 9px; position: relative; cursor: pointer;
+  transition: background 0.25s ease; border: 1px solid var(--glass-border);
+}
+.toggle.on { background: var(--neon-cyan); box-shadow: 0 0 8px rgba(0,245,255,0.35); }
+.toggle::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 12px; height: 12px; background: #fff; border-radius: 50%;
+  transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+.toggle.on::after { transform: translateX(16px); }
+
+.sens-row { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+.sens-label { font-size: 9px; letter-spacing: 1px; color: var(--text-dim); width: 85px; flex-shrink: 0; }
+input[type=range] {
+  flex: 1; -webkit-appearance: none; height: 4px; border-radius: 2px; outline: none; cursor: pointer;
+  background: linear-gradient(90deg, var(--neon-cyan) var(--pct,70%), rgba(255,255,255,0.08) var(--pct,70%));
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 13px; height: 13px;
+  border-radius: 50%; background: var(--neon-cyan);
+  box-shadow: 0 0 6px rgba(0,245,255,0.9); cursor: pointer;
+  transition: transform 0.18s ease;
+}
+input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+.range-val { font-size: 10px; color: var(--neon-cyan); width: 26px; text-align: right; }
+
+/* ─── MODAL ─── */
+.modal-bg {
+  display: none; position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(12px);
+  align-items: center; justify-content: center;
+}
+.modal-bg.open { display: flex; animation: modal-in 0.28s ease; }
+@keyframes modal-in { from{opacity:0;transform:scale(0.94);} to{opacity:1;transform:scale(1);} }
+
+.modal {
+  background: var(--bg-mid); border: 1px solid var(--glass-border);
+  border-radius: 22px; padding: 26px; width: 400px; max-width: 95vw;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+}
+.modal-title {
+  font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 900;
+  background: linear-gradient(90deg, var(--neon-pink), var(--neon-purple));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 4px;
+}
+.modal-sub { font-size: 10px; color: var(--text-dim); margin-bottom: 18px; letter-spacing: .4px; }
+
+.upload-zone {
+  border: 2px dashed var(--glass-border); border-radius: var(--radius-sm);
+  padding: 26px; text-align: center; cursor: pointer;
+  transition: all 0.25s ease; position: relative; margin-bottom: 10px;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--neon-cyan); background: rgba(0,245,255,0.03);
+}
+.upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width:100%;height:100%; }
+.upload-icon { font-size: 30px; margin-bottom: 7px; }
+.upload-text { font-size: 10px; color: var(--text-dim); letter-spacing: .4px; line-height: 1.6; }
+.upload-text strong { color: var(--neon-cyan); }
+
+.upload-preview {
+  display: none; border-radius: var(--radius-sm); overflow: hidden;
+  margin-bottom: 10px; border: 1px solid var(--glass-border); position: relative;
+}
+.upload-preview img { width:100%; max-height:170px; object-fit:contain; background:#000; display:block; }
+.upload-preview .clear-btn {
+  position: absolute; top:7px; right:7px;
+  background: rgba(0,0,0,0.75); border: none; color: #fff;
+  border-radius: 50%; width: 22px; height: 22px;
+  cursor: pointer; font-size: 11px; display:flex;align-items:center;justify-content:center;
+}
+.clear-btn:hover { background: var(--neon-pink); }
+
+.audio-row {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm); padding: 10px 13px; margin-bottom: 16px;
+  cursor: pointer; transition: all 0.2s ease; position: relative;
+}
+.audio-row:hover { border-color: var(--neon-purple); }
+.audio-row input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width:100%;height:100%; }
+.audio-row .a-icon { font-size: 20px; flex-shrink:0; }
+.audio-row .a-info { flex:1; }
+.audio-row .a-title { font-size: 10px; font-weight: 700; color: var(--text-bright); }
+.audio-row .a-sub { font-size: 9px; color: var(--text-dim); margin-top: 2px; }
+
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.btn-danger { color: var(--neon-pink) !important; border-color: var(--neon-pink) !important; }
+
+/* ─── TOAST ─── */
+#toast-container {
+  position: fixed; bottom: 22px; right: 22px; z-index: 200;
+  display: flex; flex-direction: column; gap: 7px; pointer-events: none;
+}
+.toast {
+  background: rgba(13,13,26,0.97); backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border); border-radius: 13px;
+  padding: 10px 16px; font-size: 11px; letter-spacing: .4px;
+  display: flex; align-items: center; gap: 9px;
+  animation: toast-in 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.toast.success { border-color: var(--neon-green); color: var(--neon-green); }
+.toast.info    { border-color: var(--neon-cyan);  color: var(--neon-cyan); }
+.toast.warn    { border-color: var(--neon-yellow); color: var(--neon-yellow); }
+@keyframes toast-in  { from{opacity:0;transform:translateX(40px) scale(0.88);} to{opacity:1;transform:none;} }
+@keyframes toast-out { to{opacity:0;transform:translateX(40px) scale(0.88);} }
+
+/* ─── PARTICLES ─── */
+.particle {
+  position: fixed; pointer-events: none;
+  width: 7px; height: 7px; border-radius: 50%; z-index: 300;
+  animation: particle-fly 0.85s ease-out forwards;
+}
+@keyframes particle-fly {
+  0%   { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+}
+
+/* ─── IE ROW ─── */
+.ie-row { display: flex; gap: 8px; }
+.ie-note { margin-top:9px; font-size:9px; color:var(--text-dim); line-height:1.7; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 920px) {
+  .app-layout { grid-template-columns: 1fr; }
+  .controls-panel { order: -1; }
+  .gesture-list { max-height: 260px; }
+}
+@media (max-width: 600px) {
+  .header { flex-direction: column; gap: 10px; align-items: flex-start; }
+  .app-layout { padding: 12px; gap: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
+<header class="header">
+  <div>
+    <div class="logo">MEMIC 🤖</div>
+    <div class="logo-sub">AI Meme Machine — Real-time Gesture Detector</div>
+  </div>
+  <div class="header-actions">
+    <div class="status-dot off" id="cam-status-dot"></div>
+    <button class="btn btn-ghost" id="start-cam-btn">📷 Start Cam</button>
+    <button class="btn btn-ghost" id="import-btn">📦 Import Pack</button>
+    <button class="btn btn-neon" id="export-btn">🚀 Export Pack</button>
+    <input type="file" id="import-file-input" accept=".json" style="display:none">
+  </div>
+</header>
+
+<!-- ═══════════════════════════ MAIN ═══════════════════════════ -->
+<div class="app-layout">
+
+  <!-- ── LEFT: CAMERA FEED ── -->
+  <div class="cam-panel">
+    <div class="cam-container" id="cam-container">
+      <video id="webcam" autoplay playsinline muted></video>
+      <canvas id="output-canvas"></canvas>
+
+      <!-- No-cam overlay -->
+      <div class="no-cam" id="no-cam-overlay">
+        <div class="no-cam-emoji">👁️</div>
+        <div class="no-cam-title">Webcam Offline</div>
+        <div class="no-cam-sub">Grant camera permission to begin</div>
+        <button class="btn btn-cyan" onclick="startCamera()" style="margin-top:4px">📷 Enable Camera</button>
+      </div>
+
+      <!-- Scan line (hidden until cam starts) -->
+      <div class="scan-line" id="scan-line" style="display:none"></div>
+
+      <!-- Corner HUD brackets -->
+      <div class="cam-corner cam-corner-tl"></div>
+      <div class="cam-corner cam-corner-tr"></div>
+      <div class="cam-corner cam-corner-bl"></div>
+      <div class="cam-corner cam-corner-br"></div>
+
+      <!-- HUD overlay -->
+      <div class="cam-overlay-ui">
+        <div class="cam-top-bar">
+          <div class="rec-badge" id="rec-badge" style="display:none">
+            <div class="status-dot"></div>LIVE
+          </div>
+          <div class="gesture-label" id="gesture-label">Scanning…</div>
+        </div>
+        <div class="cam-bottom-bar">
+          <div class="detect-chip" id="chip-face">FACE MESH</div>
+          <div class="detect-chip" id="chip-hand">HANDS</div>
+          <div class="detect-chip" id="chip-pose">POSE</div>
+          <div class="detect-chip" id="chip-tongue">TONGUE</div>
+        </div>
+      </div>
+
+      <!-- Screen flash -->
+      <div id="screen-flash"></div>
+
+      <!-- Combo counter -->
+      <div id="combo-counter"></div>
+
+      <!-- 3-second window HUD: countdown ring + confidence meter -->
+      <div id="window-hud">
+        <div id="countdown-ring-wrap">
+          <svg viewBox="0 0 120 120">
+            <circle id="countdown-track" cx="60" cy="60" r="54"/>
+            <circle id="countdown-arc"   cx="60" cy="60" r="54"/>
+          </svg>
+          <div id="countdown-num">3</div>
+        </div>
+        <div id="confidence-wrap">
+          <div id="confidence-gesture-row">
+            <span id="confidence-emoji">❓</span>
+            <span id="confidence-name">Waiting…</span>
+            <span id="confidence-pct">0%</span>
+          </div>
+          <div id="confidence-bar-bg"><div id="confidence-bar-fill"></div></div>
+        </div>
+      </div>
+
+      <!-- Meme pop-up (no label — image only) -->
+      <div id="meme-popup">
+        <div class="meme-card">
+          <img id="meme-popup-img" src="" alt="meme">
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="stats-row">
+      <div class="stat-chip"><div class="stat-num" id="stat-triggers">0</div><div class="stat-label">TRIGGERS</div></div>
+      <div class="stat-chip"><div class="stat-num" id="stat-memes">0</div><div class="stat-label">MEMES LOADED</div></div>
+      <div class="stat-chip"><div class="stat-num" id="stat-fps">0</div><div class="stat-label">FPS</div></div>
+    </div>
+
+    <!-- Live trigger feed -->
+    <div class="glass-card">
+      <div class="card-title"><span class="ct-emoji">⚡</span>Live Trigger Feed</div>
+      <div class="trigger-feed" id="trigger-feed">
+        <div class="feed-item"><span class="feed-emoji">👁️</span><span class="feed-name" style="color:var(--text-dim)">Waiting for gestures…</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: CONTROLS ── -->
+  <div class="controls-panel">
+
+    <!-- Detection settings -->
+    <div class="glass-card">
+      <div class="card-title"><span class="ct-emoji">🎛️</span>Detection Settings</div>
+      <div class="toggle-row">
+        <div class="toggle-label">Show Face Mesh</div>
+        <div class="toggle on" id="toggle-mesh" onclick="toggleSetting('mesh')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-label">Show Hand Skeleton</div>
+        <div class="toggle on" id="toggle-hands-vis" onclick="toggleSetting('hands-vis')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-label">Show Pose Skeleton</div>
+        <div class="toggle on" id="toggle-pose-vis" onclick="toggleSetting('pose-vis')"></div>
+      </div>
+      <div class="sens-row">
+        <div class="sens-label">SENSITIVITY</div>
+        <input type="range" id="r-sens" min="1" max="10" value="7">
+        <div class="range-val" id="v-sens">7</div>
+      </div>
+      <div class="sens-row">
+        <div class="sens-label">COOLDOWN (s)</div>
+        <input type="range" id="r-cd" min="1" max="10" value="3">
+        <div class="range-val" id="v-cd">3</div>
+      </div>
+      <div class="sens-row">
+        <div class="sens-label">POPUP SIZE</div>
+        <input type="range" id="r-psize" min="1" max="5" value="3">
+        <div class="range-val" id="v-psize">3</div>
+      </div>
+    </div>
+
+    <!-- Gesture slots -->
+    <div class="glass-card" style="flex:1">
+      <div class="card-title" style="justify-content:space-between">
+        <span style="display:flex;align-items:center;gap:7px"><span class="ct-emoji">🎭</span>Gesture Meme Slots</span>
+        <span style="font-size:8px;color:var(--text-dim);letter-spacing:1px">CLICK TO ASSIGN</span>
+      </div>
+      <div class="gesture-list" id="gesture-list"></div>
+    </div>
+
+    <!-- Import / export -->
+    <div class="glass-card">
+      <div class="card-title"><span class="ct-emoji">📦</span>Meme Pack</div>
+      <div class="ie-row">
+        <button class="btn btn-ghost" style="flex:1" onclick="document.getElementById('import-file-input').click()">📥 Import</button>
+        <button class="btn btn-ghost" style="flex:1" onclick="exportPack()">📤 Export</button>
+      </div>
+      <div class="ie-note">Pack bundles: images · sounds · gesture mappings · sensitivity config</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════ MODAL ═══════════════════════════ -->
+<div class="modal-bg" id="assign-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Assign Meme</div>
+    <div class="modal-sub" id="modal-sub">Upload an image and optional sound for this gesture</div>
+
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" id="meme-file-input" accept="image/*">
+      <div class="upload-icon">🖼️</div>
+      <div class="upload-text">Drop meme here or <strong>click to upload</strong><br>PNG · JPG · GIF · WEBP</div>
+    </div>
+
+    <div class="upload-preview" id="meme-preview">
+      <img id="meme-preview-img" src="" alt="preview">
+      <button class="clear-btn" onclick="clearMemePreview()">✕</button>
+    </div>
+
+    <div class="audio-row">
+      <input type="file" id="audio-file-input" accept="audio/*">
+      <div class="a-icon">🎵</div>
+      <div class="a-info">
+        <div class="a-title" id="audio-title">Add Sound Effect</div>
+        <div class="a-sub" id="audio-sub">Optional MP3 / WAV trigger sound</div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-ghost btn-danger" onclick="clearSlot()">🗑 Clear Slot</button>
+      <button class="btn btn-neon" onclick="saveSlot()">Save ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ TOAST ═══════════════════════════ -->
+<div id="toast-container"></div>
+
+<!-- MediaPipe CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════════════
+// GESTURE DEFINITIONS
+// ════════════════════════════════════════════════════════════════
+const GESTURES = [
+  { id:  0, emoji: '🙄', name: 'Eyes Up',       desc: 'Head tilted up + eyes looking up',           color: '#ff2d78' },
+  { id:  1, emoji: '🙌', name: 'Arms Wave',      desc: 'Both arms moving up and down',               color: '#00f5ff' },
+  { id:  2, emoji: '😤', name: 'Squint Pout',    desc: 'Eyes squinting + pout expression',           color: '#bf5fff' },
+  { id:  3, emoji: '👍', name: 'Thumbs Up',      desc: 'Thumbs up gesture',                          color: '#39ff14' },
+  { id:  4, emoji: '🤭', name: 'Whisper Move',   desc: 'One hand covering mouth + other hand moving',color: '#ffe600' },
+  { id:  5, emoji: '✋', name: 'Hand Raised',    desc: 'One hand raised straight upward',            color: '#ff6b00' },
+  { id:  6, emoji: '😴', name: 'Eyes Closed',    desc: 'Both eyes closed for 2+ seconds',            color: '#6b9fff' },
+  { id:  7, emoji: '🤜', name: 'Double Fist',    desc: 'Both hands forming fists together',          color: '#ff2d78' },
+  { id:  8, emoji: '😱', name: 'Shock Point',    desc: 'Finger pointing at screen + mouth wide open',color: '#00f5ff' },
+  { id:  9, emoji: '😎', name: 'Chill Mode',     desc: 'Both hands behind head + eyes & mouth open', color: '#bf5fff' },
+  { id: 10, emoji: '😛', name: 'Tongue Out',     desc: 'Tongue visible — high accuracy mode',        color: '#39ff14' },
+  { id: 11, emoji: '🙈', name: 'Side Profile',   desc: 'Profile view held for 2+ seconds',           color: '#ffe600' },
+  { id: 12, emoji: '🤔', name: 'Think Tap',      desc: 'Index finger touching head / temple',        color: '#ff6b00' },
+  { id: 13, emoji: '🤷', name: 'Wide Arms',      desc: 'Both hands raised wide apart',               color: '#6b9fff' },
+  { id: 14, emoji: '✌️', name: 'Peace Sign',     desc: 'Peace / victory hand sign',                  color: '#ff2d78' },
+  { id: 15, emoji: '💅', name: 'Smug Point',     desc: 'Index finger up + smug/confident expression',color: '#00f5ff' },
+];
+
+// ════════════════════════════════════════════════════════════════
+// APP STATE
+// ════════════════════════════════════════════════════════════════
+let gestureSlots  = {};   // id -> { imageDataURL, audioDataURL, audioName }
+let settings      = { sensitivity: 7, cooldown: 3, popupSize: 3, showMesh: true, showHandsVis: true, showPoseVis: true };
+let cooldowns     = {};   // id -> Date.now() of last trigger
+let triggerCount  = 0;
+
+// Modal temp state
+let currentEditId    = null;
+let editImageDataURL = null;
+let editAudioDataURL = null;
+let editAudioName    = null;
+
+// MediaPipe result buffers
+let faceLandmarks  = null;
+let handResults    = null;
+let poseResults    = null;
+
+// Timing helpers
+let fpsCounter = 0, fpsLast = Date.now();
+let camRunning = false, mpCamera = null;
+
+// Stateful gesture counters
+let eyesClosedStart  = null;
+let profileStart     = null;
+let memePopupTimeout = null;
+let prevPoseLM       = null;
+let armsMovingAccum  = 0;
+
+// Smoothing buffers (last N frames per gesture boolean)
+const SMOOTH_N = 4;
+const smoothBuf = {};
+GESTURES.forEach(g => { smoothBuf[g.id] = []; });
+
+// ════════════════════════════════════════════════════════════════
+// RANGE SLIDER INIT
+// ════════════════════════════════════════════════════════════════
+function initRange(id, valId, settingKey) {
+  const el = document.getElementById(id);
+  const vEl = document.getElementById(valId);
+  const update = () => {
+    const v = parseInt(el.value);
+    const pct = ((v - parseInt(el.min)) / (parseInt(el.max) - parseInt(el.min)) * 100).toFixed(1) + '%';
+    el.style.setProperty('--pct', pct);
+    vEl.textContent = v;
+    settings[settingKey] = v;
+  };
+  el.addEventListener('input', update);
+  update();
+}
+initRange('r-sens',  'v-sens',  'sensitivity');
+initRange('r-cd',    'v-cd',    'cooldown');
+initRange('r-psize', 'v-psize', 'popupSize');
+
+function toggleSetting(key) {
+  if (key === 'mesh')      { settings.showMesh     = !settings.showMesh;     document.getElementById('toggle-mesh').classList.toggle('on', settings.showMesh); }
+  if (key === 'hands-vis') { settings.showHandsVis = !settings.showHandsVis; document.getElementById('toggle-hands-vis').classList.toggle('on', settings.showHandsVis); }
+  if (key === 'pose-vis')  { settings.showPoseVis  = !settings.showPoseVis;  document.getElementById('toggle-pose-vis').classList.toggle('on', settings.showPoseVis); }
+}
+
+// ════════════════════════════════════════════════════════════════
+// GESTURE LIST UI
+// ════════════════════════════════════════════════════════════════
+function buildGestureList() {
+  const list = document.getElementById('gesture-list');
+  list.innerHTML = '';
+  GESTURES.forEach(g => {
+    const slot = gestureSlots[g.id];
+    const item = document.createElement('div');
+    item.className = 'gesture-item' + (slot ? ' has-meme' : '');
+    item.id = 'gi-' + g.id;
+
+    item.innerHTML =
+      `<div class="g-emoji">${g.emoji}</div>` +
+      `<div class="g-info"><div class="g-name">${g.name}</div><div class="g-desc">${g.desc}</div></div>` +
+      (slot ? `<img class="g-thumb" src="${slot.imageDataURL}" alt="">` : '') +
+      (slot && slot.audioName ? `<div class="g-sound-icon">🔊</div>` : '') +
+      `<div class="g-edit-btn" onclick="event.stopPropagation();openModal(${g.id})">✏️</div>`;
+
+    item.addEventListener('click', () => openModal(g.id));
+    list.appendChild(item);
+  });
+  document.getElementById('stat-memes').textContent =
+    Object.values(gestureSlots).filter(Boolean).length;
+}
+
+// ════════════════════════════════════════════════════════════════
+// MODAL
+// ════════════════════════════════════════════════════════════════
+function openModal(id) {
+  currentEditId    = id;
+  const g          = GESTURES[id];
+  const slot       = gestureSlots[id];
+  editImageDataURL = slot?.imageDataURL || null;
+  editAudioDataURL = slot?.audioDataURL || null;
+  editAudioName    = slot?.audioName    || null;
+
+  document.getElementById('modal-title').textContent = g.emoji + '  ' + g.name;
+  document.getElementById('modal-sub').textContent   = g.desc;
+  document.getElementById('meme-file-input').value   = '';
+  document.getElementById('audio-file-input').value  = '';
+
+  const showPreview = !!editImageDataURL;
+  document.getElementById('upload-zone').style.display   = showPreview ? 'none' : '';
+  document.getElementById('meme-preview').style.display  = showPreview ? '' : 'none';
+  if (showPreview) document.getElementById('meme-preview-img').src = editImageDataURL;
+
+  document.getElementById('audio-title').textContent = editAudioName  || 'Add Sound Effect';
+  document.getElementById('audio-sub').textContent   = editAudioName  ? '✓ Audio loaded — click to replace' : 'Optional MP3 / WAV trigger sound';
+
+  document.getElementById('assign-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('assign-modal').classList.remove('open');
+  currentEditId = editImageDataURL = editAudioDataURL = editAudioName = null;
+}
+
+function clearMemePreview() {
+  editImageDataURL = null;
+  document.getElementById('meme-preview').style.display  = 'none';
+  document.getElementById('upload-zone').style.display   = '';
+  document.getElementById('meme-preview-img').src = '';
+}
+
+function saveSlot() {
+  if (!editImageDataURL) { toast('⚠️ Please upload a meme image first!', 'warn'); return; }
+  gestureSlots[currentEditId] = { imageDataURL: editImageDataURL, audioDataURL: editAudioDataURL, audioName: editAudioName };
+  buildGestureList();
+  closeModal();
+  toast('✓ Meme saved for ' + GESTURES[currentEditId].name, 'success');
+  particleBurst(window.innerWidth / 2, window.innerHeight / 2);
+}
+
+function clearSlot() {
+  delete gestureSlots[currentEditId];
+  buildGestureList();
+  closeModal();
+  toast('Slot cleared', 'info');
+}
+
+// File inputs
+document.getElementById('meme-file-input').addEventListener('change', function () {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    editImageDataURL = ev.target.result;
+    document.getElementById('meme-preview-img').src = editImageDataURL;
+    document.getElementById('meme-preview').style.display = '';
+    document.getElementById('upload-zone').style.display  = 'none';
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('audio-file-input').addEventListener('change', function () {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    editAudioDataURL = ev.target.result;
+    editAudioName    = file.name;
+    document.getElementById('audio-title').textContent = file.name;
+    document.getElementById('audio-sub').textContent   = '✓ Audio loaded';
+    toast('🎵 Sound loaded: ' + file.name, 'success');
+  };
+  reader.readAsDataURL(file);
+});
+
+// Drag & drop on upload zone
+const uploadZone = document.getElementById('upload-zone');
+uploadZone.addEventListener('dragover',  e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      editImageDataURL = ev.target.result;
+      document.getElementById('meme-preview-img').src = editImageDataURL;
+      document.getElementById('meme-preview').style.display = '';
+      document.getElementById('upload-zone').style.display  = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// Close modal on backdrop click
+document.getElementById('assign-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('assign-modal')) closeModal();
+});
+
+// ════════════════════════════════════════════════════════════════
+// CAMERA SETUP
+// ════════════════════════════════════════════════════════════════
+const videoEl  = document.getElementById('webcam');
+const canvasEl = document.getElementById('output-canvas');
+const ctx      = canvasEl.getContext('2d');
+
+let faceMesh, hands, pose;
+
+async function startCamera() {
+  const btn = document.getElementById('start-cam-btn');
+  btn.textContent = '⏳ Loading…';
+  btn.disabled = true;
+  try {
+    await setupMediaPipe();
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 1280, height: 720, facingMode: 'user' }, audio: false
+    });
+    videoEl.srcObject = stream;
+    await new Promise(r => { videoEl.onloadedmetadata = r; });
+    canvasEl.width  = videoEl.videoWidth  || 1280;
+    canvasEl.height = videoEl.videoHeight || 720;
+    camRunning = true;
+
+    document.getElementById('no-cam-overlay').style.display = 'none';
+    document.getElementById('scan-line').style.display      = 'none';
+    document.getElementById('rec-badge').style.display      = 'flex';
+    document.getElementById('cam-status-dot').classList.remove('off');
+
+    btn.textContent = '⏹ Stop Cam';
+    btn.disabled    = false;
+    btn.onclick     = stopCamera;
+    toast('📷 Camera started — go wild!', 'success');
+
+    mpCamera = new Camera(videoEl, { onFrame: processFrame, width: 1280, height: 720 });
+    mpCamera.start();
+    requestAnimationFrame(fpsLoop);
+  } catch (err) {
+    toast('❌ Camera access denied or unavailable', 'warn');
+    btn.textContent = '📷 Start Cam';
+    btn.disabled    = false;
+    console.error(err);
+  }
+}
+
+function stopCamera() {
+  if (mpCamera) { mpCamera.stop(); mpCamera = null; }
+  if (videoEl.srcObject) videoEl.srcObject.getTracks().forEach(t => t.stop());
+  camRunning = false;
+  ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+
+  document.getElementById('no-cam-overlay').style.display = '';
+  document.getElementById('scan-line').style.display      = 'none';
+  document.getElementById('rec-badge').style.display      = 'none';
+  document.getElementById('cam-status-dot').classList.add('off');
+
+  const btn = document.getElementById('start-cam-btn');
+  btn.textContent = '📷 Start Cam';
+  btn.onclick     = startCamera;
+  toast('📷 Camera stopped', 'info');
+}
+
+document.getElementById('start-cam-btn').onclick = startCamera;
+
+async function setupMediaPipe() {
+  // Face Mesh
+  faceMesh = new FaceMesh({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
+  faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.55, minTrackingConfidence: 0.5 });
+  faceMesh.onResults(r => { faceLandmarks = r.multiFaceLandmarks?.[0] || null; });
+  await faceMesh.initialize();
+
+  // Hands
+  hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+  hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+  hands.onResults(r => { handResults = r; });
+  await hands.initialize();
+
+  // Pose
+  pose = new Pose({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}` });
+  pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+  pose.onResults(r => { poseResults = r; });
+  await pose.initialize();
+
+  ['chip-face','chip-hand','chip-pose','chip-tongue'].forEach(id =>
+    document.getElementById(id).classList.add('active'));
+}
+
+// ════════════════════════════════════════════════════════════════
+// MAIN DETECTION LOOP
+// ════════════════════════════════════════════════════════════════
+async function processFrame() {
+  if (!camRunning) return;
+  fpsCounter++;
+  try { await faceMesh.send({ image: videoEl }); } catch(_){}
+  try { await hands.send({ image: videoEl }); }    catch(_){}
+  try { await pose.send({ image: videoEl }); }     catch(_){}
+  drawOverlays();
+  detectGestures();
+}
+
+// ════════════════════════════════════════════════════════════════
+// DRAW OVERLAYS
+// ════════════════════════════════════════════════════════════════
+function drawOverlays() {
+  ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+
+  // ── Mirror the canvas to match the CSS-mirrored video feed ──
+  // MediaPipe gives landmarks in raw-video space (unmirrored).
+  // The <video> is flipped with CSS scaleX(-1), so we must flip
+  // the canvas context identically so overlays sit on the face.
+  ctx.save();
+  ctx.translate(canvasEl.width, 0);
+  ctx.scale(-1, 1);
+
+  if (settings.showMesh && faceLandmarks) {
+    drawConnectors(ctx, faceLandmarks, FACEMESH_TESSELATION,
+      { color: 'rgba(0,245,255,0.07)', lineWidth: 0.5 });
+    drawConnectors(ctx, faceLandmarks, FACEMESH_FACE_OVAL,
+      { color: 'rgba(0,245,255,0.45)',  lineWidth: 1.5 });
+    drawConnectors(ctx, faceLandmarks, FACEMESH_LEFT_EYE,
+      { color: 'rgba(255,45,120,0.8)', lineWidth: 1.5 });
+    drawConnectors(ctx, faceLandmarks, FACEMESH_RIGHT_EYE,
+      { color: 'rgba(255,45,120,0.8)', lineWidth: 1.5 });
+    drawConnectors(ctx, faceLandmarks, FACEMESH_LEFT_IRIS,
+      { color: 'rgba(57,255,20,0.9)',  lineWidth: 1.5 });
+    drawConnectors(ctx, faceLandmarks, FACEMESH_RIGHT_IRIS,
+      { color: 'rgba(57,255,20,0.9)',  lineWidth: 1.5 });
+    drawConnectors(ctx, faceLandmarks, FACEMESH_LIPS,
+      { color: 'rgba(191,95,255,0.8)', lineWidth: 1.5 });
+  }
+
+  if (settings.showHandsVis && handResults?.multiHandLandmarks) {
+    for (const lm of handResults.multiHandLandmarks) {
+      drawConnectors(ctx, lm, HAND_CONNECTIONS,
+        { color: 'rgba(255,230,0,0.65)', lineWidth: 2 });
+      drawLandmarks(ctx, lm,
+        { color: 'rgba(255,230,0,0.95)', lineWidth: 1, radius: 3 });
+    }
+  }
+
+  if (settings.showPoseVis && poseResults?.poseLandmarks) {
+    drawConnectors(ctx, poseResults.poseLandmarks, POSE_CONNECTIONS,
+      { color: 'rgba(255,107,0,0.5)', lineWidth: 2 });
+    drawLandmarks(ctx, poseResults.poseLandmarks,
+      { color: 'rgba(255,107,0,0.85)', lineWidth: 1, radius: 3 });
+  }
+
+  ctx.restore();
+}
+
+// ════════════════════════════════════════════════════════════════
+// GESTURE DETECTION
+// ════════════════════════════════════════════════════════════════
+function detectGestures() {
+  const now  = Date.now();
+  const sens = settings.sensitivity;          // 1-10
+  const onCD = id => cooldowns[id] && (now - cooldowns[id] < settings.cooldown * 1000);
+
+  // For smoothing: push boolean into buffer, return true if majority true
+  const smooth = (id, val) => {
+    const buf = smoothBuf[id];
+    buf.push(val ? 1 : 0);
+    if (buf.length > SMOOTH_N) buf.shift();
+    return buf.reduce((a,b) => a+b, 0) >= Math.ceil(SMOOTH_N * 0.6);
+  };
+
+  let detected = null;
+  const L = faceLandmarks;
+  const hLMs = handResults?.multiHandLandmarks || [];
+  const pLMs = poseResults?.poseLandmarks || null;
+
+  // ═══════════════════════════════════════════════════════════════
+  // PRE-COMPUTE SHARED FLAGS — evaluated once, reused across
+  // multiple gesture checks for clean mutual exclusion.
+  // ═══════════════════════════════════════════════════════════════
+
+  // Shared mouth openness ratio (avoids recalculating per gesture)
+  const fMouthOpen = L ? mouthOpenR(L) : 0;
+
+  // Any hand has index-only extended (shared by G8, G12, G15)
+  const anyIndexOnly = hLMs.some(h => isIndexOnlyExtended(h));
+
+  // Index pointing TOWARD screen: tip in middle vertical band (not near face, not off screen)
+  const anyPointAtScreen = hLMs.some(h =>
+    isIndexPointing(h) && h[8].y > 0.32 && h[8].y < 0.85
+  );
+
+  // Index tip near the face (G12 tap-head territory — suppresses G8/G15 in that zone)
+  const noseXf = L ? L[1].x  : 0.5;
+  const noseYf = L ? L[1].y  : 0.5;
+  const foreYf = L ? L[10].y : 0.3;
+  const indexNearFace = L && hLMs.some(h => {
+    const tip = h[8];
+    return (Math.hypot(tip.x - noseXf, tip.y - noseYf) < 0.18 ||
+            Math.hypot(tip.x - noseXf, tip.y - foreYf) < 0.22) &&
+           isIndexOnlyExtended(h);
+  });
+
+  // Hand covers mouth (G4 + suppresses G1)
+  const mouthCx = L ? (L[61].x + L[291].x) / 2 : -1;
+  const mouthCy = L ? (L[13].y  + L[14].y)  / 2 : -1;
+  const mouthThresh = 0.20 - (sens - 5) * 0.01;
+  const g4Active = hLMs.length > 0 && L && hLMs.some(h => {
+    const pts = [h[0], h[5], h[9], h[13], h[17]];
+    const cx  = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+    const cy  = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+    return Math.hypot(cx - mouthCx, cy - mouthCy) < mouthThresh;
+  });
+
+  // Both fists (G7 + suppresses G1 waving accumulation)
+  const bothFists = hLMs.length >= 2 && isFist(hLMs[0]) && isFist(hLMs[1]);
+
+  // G13 static wide-arms flag — computed inside G13 block, used by G1
+  let g13Active = false;
+
+  // ── GESTURE 0: Head tilted up + eyes looking up ──────────────
+  if (!detected && !onCD(0) && L) {
+    const nose    = L[1];
+    const irisL   = L[468];
+    const eyeTopL = L[159], eyeBotL = L[145];
+    const headUp  = nose.y < 0.42 - (sens-5)*0.012;
+    const irisUp  = irisL
+      ? (irisL.y - eyeTopL.y) / Math.max(eyeBotL.y - eyeTopL.y, 0.001) < 0.38 - (sens-5)*0.015
+      : false;
+    if (smooth(0, headUp && irisUp)) detected = 0;
+  }
+
+  // ── GESTURE 2: Eyes squinting + pout ─────────────────────────
+  // Not confused with G6 (eyes closed) — G6 uses a stricter
+  // threshold and requires a 2-second hold.
+  if (!detected && !onCD(2) && L) {
+    const earL  = eyeAR(L,'left'), earR = eyeAR(L,'right');
+    const avgEAR = (earL + earR) / 2;
+    const earThr = 0.20 - (sens-5)*0.008;
+    if (smooth(2, avgEAR < earThr && fMouthOpen < 0.18)) detected = 2;
+  }
+
+  // ── GESTURE 3: Thumbs Up ─────────────────────────────────────
+  if (!detected && !onCD(3) && hLMs.length > 0) {
+    if (smooth(3, hLMs.some(h => isThumbsUp(h)))) detected = 3;
+  }
+
+  // ── GESTURE 4: Hand covering mouth (Whisper Move) ────────────
+  if (!detected && !onCD(4) && g4Active) {
+    if (smooth(4, true)) detected = 4;
+  }
+
+  // ── GESTURE 6: Eyes closed 2s ────────────────────────────────
+  // Checked early — stricter EAR threshold than G2 squint (0.13 vs 0.20).
+  if (!detected && !onCD(6) && L) {
+    const earL = eyeAR(L,'left'), earR = eyeAR(L,'right');
+    const closedThr = 0.13 - (sens-5)*0.005;
+    if (earL < closedThr && earR < closedThr) {
+      if (!eyesClosedStart) eyesClosedStart = now;
+      if (now - eyesClosedStart > 2000) { detected = 6; eyesClosedStart = null; }
+    } else { eyesClosedStart = null; }
+  }
+
+  // ── GESTURE 7: Both hands fist ───────────────────────────────
+  if (!detected && !onCD(7) && bothFists) {
+    if (smooth(7, true)) detected = 7;
+  }
+
+  // ── GESTURE 10: Tongue Out ───────────────────────────────────
+  // Checked BEFORE G8 (mouth open + point) so tongue-out wins
+  // when mouth is also open. Suppressed when finger is actively
+  // pointing at screen (that combination belongs to G8).
+  if (!detected && !onCD(10) && L && !anyPointAtScreen) {
+    if (smooth(10, detectTongue(L, sens))) detected = 10;
+  }
+
+  // ── GESTURE 12: Index tap head ───────────────────────────────
+  // Checked BEFORE G8 and G15 — finger near face takes absolute
+  // priority; G8 requires hand away from face, G15 excludes indexNearFace.
+  if (!detected && !onCD(12) && indexNearFace) {
+    if (smooth(12, true)) detected = 12;
+  }
+
+  // ── GESTURE 8: Finger pointing at screen + mouth wide open ───
+  // Requires: anyPointAtScreen (hand away from face), mouth open,
+  // NOT tongue-out (G10 already handled), NOT near face (G12 handled).
+  if (!detected && !onCD(8) && anyPointAtScreen && L && !indexNearFace) {
+    if (smooth(8, fMouthOpen > 0.45 - (sens-5)*0.025)) detected = 8;
+  }
+
+  // ── GESTURE 5: One hand raised straight up ───────────────────
+  // Excluded: index-pointing hands (G8), hands near face (G12),
+  // and requires the other hand to be below shoulder (not G13).
+  if (!detected && !onCD(5) && hLMs.length > 0 && pLMs && !indexNearFace) {
+    const ls = pLMs[11], rs = pLMs[12];
+    if (ls && rs) {
+      const shoulderY = (ls.y + rs.y) / 2;
+      const raised  = hLMs.filter(h =>
+        isHandRaisedStraight(h, sens) && !isIndexPointing(h)
+      );
+      const lowered = hLMs.filter(h => h[0].y > shoulderY + 0.05);
+      if (smooth(5, raised.length >= 1 && lowered.length >= 1)) detected = 5;
+    }
+  }
+
+  // ── GESTURE 9: Hands behind head + mouth open ────────────────
+  // Excluded from G13: wrist span must be LESS than 1.8× shoulder
+  // span — hands pulled in toward head, not spread laterally.
+  if (!detected && !onCD(9) && pLMs && L) {
+    const lw = pLMs[15], rw = pLMs[16];
+    const le = pLMs[7],  re = pLMs[8];
+    const ls = pLMs[11], rs = pLMs[12];
+    if (lw && rw && le && re && ls && rs) {
+      const lBehind    = lw.y < le.y + 0.12;
+      const rBehind    = rw.y < re.y + 0.12;
+      const handSpan   = Math.abs(lw.x - rw.x);
+      const shouldSpan = Math.abs(ls.x - rs.x);
+      const notTooWide = handSpan < shouldSpan * 1.8;
+      const openThr    = 0.35 - (sens-5)*0.02;
+      if (smooth(9, lBehind && rBehind && notTooWide && fMouthOpen > openThr)) detected = 9;
+    }
+  }
+
+  // ── GESTURE 11: Side profile 2s ──────────────────────────────
+  if (!detected && !onCD(11) && L) {
+    const lc = L[234], rc = L[454], n = L[1];
+    const fw     = Math.abs(rc.x - lc.x);
+    const offset = Math.abs(n.x - (lc.x + rc.x) / 2);
+    const ratio  = offset / (fw + 0.001);
+    const thresh = 0.28 - (sens-5)*0.015;
+    if (ratio > thresh) {
+      if (!profileStart) profileStart = now;
+      if (now - profileStart > 2000) { detected = 11; profileStart = null; }
+    } else { profileStart = null; }
+  }
+
+  // ── GESTURE 13: Both hands wide apart + OPEN + STILL ─────────
+  // Excluded from G9: requires wrists LATERALLY outside shoulder X.
+  // Excluded from G1: stillness check + G1 drains when g13Active.
+  if (!detected && !onCD(13) && pLMs && hLMs.length >= 2) {
+    const lw = pLMs[15], rw = pLMs[16];
+    const ls = pLMs[11], rs = pLMs[12];
+    const lh = pLMs[23], rh = pLMs[24];
+    if (lw && rw && ls && rs && lh && rh) {
+      const handSpan    = Math.abs(lw.x - rw.x);
+      const shouldSpan  = Math.abs(ls.x - rs.x);
+      const wideEnough  = handSpan > shouldSpan * (2.2 - (sens-5)*0.08);
+      // Wrists must be outside shoulder X bounds (laterally, not just raised)
+      const laterally   = (lw.x < Math.min(ls.x, rs.x)) &&
+                          (rw.x > Math.max(ls.x, rs.x));
+      const hipY        = (lh.y + rh.y) / 2;
+      const wristsUp    = lw.y < hipY - 0.05 && rw.y < hipY - 0.05;
+      const h0open      = !isFist(hLMs[0]);
+      const h1open      = !isFist(hLMs[1]);
+      const stillThr    = 0.022 - (sens-5)*0.001;
+      const still       = prevPoseLM
+        ? Math.abs(lw.y - prevPoseLM[15].y) < stillThr &&
+          Math.abs(rw.y - prevPoseLM[16].y) < stillThr
+        : true;
+      g13Active = wideEnough && laterally && wristsUp && h0open && h1open && still;
+      if (smooth(13, g13Active)) detected = 13;
+    }
+  }
+
+  // ── GESTURE 14: Peace Sign ───────────────────────────────────
+  // Safe vs G15: peace = index+middle up; G15 requires middle NOT up.
+  if (!detected && !onCD(14) && hLMs.length > 0) {
+    if (smooth(14, hLMs.some(h => isPeaceSign(h)))) detected = 14;
+  }
+
+  // ── GESTURE 15: Smug Point / Index Up ────────────────────────
+  // Chain order guarantees: G8 (point+mouth), G12 (near face),
+  // G14 (peace) all already handled. Index-up here is purely
+  // upward-pointing, away from face, not peace-sign, mouth neutral.
+  if (!detected && !onCD(15) && hLMs.length > 0) {
+    const indexUpClear = hLMs.some(h =>
+      isIndexOnlyExtended(h) &&
+      h[8].y < h[5].y - 0.02 &&
+      !indexNearFace
+    );
+    let fullPose = false;
+    if (L && hLMs.length >= 2) {
+      const earL = eyeAR(L,'left'), earR = eyeAR(L,'right');
+      const avgEAR   = (earL + earR) / 2;
+      const eyesWide = avgEAR > 0.28 - (sens-5)*0.01;
+      const mWide    = fMouthOpen > 0.55 - (sens-5)*0.025;
+      const atHead   = hLMs.every(h => h[0].y < L[1].y + 0.18);
+      const spread   = Math.abs(hLMs[0][0].x - hLMs[1][0].x) > 0.25;
+      fullPose = eyesWide && mWide && atHead && spread;
+    }
+    if (smooth(15, indexUpClear || fullPose)) detected = 15;
+  }
+
+  // ── GESTURE 1: Both arms waving up/down ──────────────────────
+  // Suppressed when: G13 (static wide), G4 (hand on mouth),
+  // G7 (both fists), or index pointing at screen (G8 territory).
+  // All four drain the accumulator aggressively on conflict.
+  if (!detected && !onCD(1) && pLMs) {
+    if (prevPoseLM) {
+      const totalDy = Math.abs(pLMs[15].y - prevPoseLM[15].y) +
+                      Math.abs(pLMs[16].y - prevPoseLM[16].y);
+      const moveThr = 0.025 - (sens-5)*0.002;
+      if (g13Active || g4Active || bothFists || anyPointAtScreen) {
+        armsMovingAccum = Math.max(armsMovingAccum - 3, 0);
+      } else if (totalDy > moveThr) {
+        armsMovingAccum = Math.min(armsMovingAccum + 1.5, 12);
+      } else {
+        armsMovingAccum = Math.max(armsMovingAccum - 1, 0);
+      }
+      if (armsMovingAccum >= 10) { detected = 1; armsMovingAccum = 0; }
+    }
+    prevPoseLM = pLMs;
+  }
+
+  // ── FEED VOTES INTO WINDOW ───────────────────────────────────
+
+  const lbl = document.getElementById('gesture-label');
+  if (detected !== null) {
+    const g = GESTURES[detected];
+    lbl.textContent      = g.emoji + ' ' + g.name;
+    lbl.style.color      = g.color;
+    lbl.style.borderColor = g.color;
+    windowVote(detected);
+  } else {
+    lbl.textContent      = 'Detecting…';
+    lbl.style.color      = '';
+    lbl.style.borderColor = '';
+    windowVote(null);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// 3-SECOND VOTING WINDOW ENGINE
+// ════════════════════════════════════════════════════════════════
+const WINDOW_MS      = 3000;   // voting window length
+const SHOW_MS        = 2500;   // how long winner meme is shown
+const CIRCUMFERENCE  = 2 * Math.PI * 54; // SVG arc (r=54)
+
+let windowState      = 'idle';  // 'idle' | 'voting' | 'showing'
+let windowStart      = 0;
+let votes            = {};      // id -> count
+let totalVotes       = 0;
+let rafWindow        = null;
+
+function windowVote(id) {
+  if (windowState === 'showing') return; // locked during display
+
+  if (windowState === 'idle') {
+    // Only start a window if something is actually detected AND has a meme slot
+    if (id === null) return;
+    const slotIds = Object.keys(gestureSlots).map(Number);
+    if (!slotIds.includes(id)) return;   // no meme assigned — skip
+    startWindow();
+  }
+
+  // Accumulate votes (nulls count as "nothing" — we still tick time)
+  if (id !== null) {
+    votes[id] = (votes[id] || 0) + 1;
+    totalVotes++;
+  }
+}
+
+function startWindow() {
+  windowState  = 'voting';
+  windowStart  = performance.now();
+  votes        = {};
+  totalVotes   = 0;
+  document.getElementById('window-hud').classList.add('active');
+  rafWindow    = requestAnimationFrame(tickWindow);
+}
+
+function tickWindow(now) {
+  if (windowState !== 'voting') return;
+  const elapsed  = now - windowStart;
+  const remaining = Math.max(0, WINDOW_MS - elapsed);
+  const progress  = elapsed / WINDOW_MS; // 0→1
+
+  // ── Countdown arc ──────────────────────────────────────────
+  const arc = document.getElementById('countdown-arc');
+  const offset = CIRCUMFERENCE * progress;          // shrinks as time passes
+  arc.style.strokeDashoffset = offset.toFixed(1);
+
+  // Colour shifts red as time runs out
+  const hue = Math.round(180 - 160 * progress);    // cyan(180) → red(20)
+  const col = `hsl(${hue},100%,55%)`;
+  arc.style.stroke = col;
+  arc.style.filter = `drop-shadow(0 0 6px ${col})`;
+
+  // Countdown number
+  const numEl = document.getElementById('countdown-num');
+  const secLeft = Math.ceil(remaining / 1000);
+  numEl.textContent = secLeft;
+  numEl.style.textShadow = `0 0 20px ${col}`;
+
+  // ── Leading gesture confidence bar ─────────────────────────
+  updateConfidenceBar();
+
+  if (elapsed >= WINDOW_MS) {
+    resolveWindow();
+    return;
+  }
+  rafWindow = requestAnimationFrame(tickWindow);
+}
+
+function updateConfidenceBar() {
+  if (totalVotes === 0) return;
+
+  // Find winner by vote count (only among gestures that have a meme)
+  let bestId = null, bestCount = 0;
+  for (const [idStr, count] of Object.entries(votes)) {
+    const id = parseInt(idStr);
+    if (gestureSlots[id] && count > bestCount) { bestId = id; bestCount = count; }
+  }
+  if (bestId === null) return;
+
+  const g   = GESTURES[bestId];
+  const pct = Math.round((bestCount / totalVotes) * 100);
+
+  document.getElementById('confidence-emoji').textContent = g.emoji;
+  document.getElementById('confidence-name').textContent  = g.name;
+  document.getElementById('confidence-pct').textContent   = pct + '%';
+
+  const fill = document.getElementById('confidence-bar-fill');
+  fill.style.width = pct + '%';
+
+  // Bar colour matches gesture colour at high confidence
+  if (pct > 70) {
+    fill.style.background = `linear-gradient(90deg, ${g.color}, #fff)`;
+    fill.style.boxShadow  = `0 0 10px ${g.color}`;
+  } else {
+    fill.style.background = 'linear-gradient(90deg, var(--neon-cyan), var(--neon-green))';
+    fill.style.boxShadow  = '0 0 8px rgba(0,245,255,0.6)';
+  }
+}
+
+function resolveWindow() {
+  windowState = 'showing';
+  cancelAnimationFrame(rafWindow);
+  document.getElementById('window-hud').classList.remove('active');
+
+  // Find the gesture with most votes that has a meme slot
+  let bestId = null, bestCount = 0;
+  for (const [idStr, count] of Object.entries(votes)) {
+    const id = parseInt(idStr);
+    if (gestureSlots[id] && count > bestCount) { bestId = id; bestCount = count; }
+  }
+
+  if (bestId !== null) {
+    fireGesture(bestId, true); // true = from window resolve, skip cooldown check
+  }
+
+  // After SHOW_MS, reset back to idle so a new window can start
+  setTimeout(() => {
+    windowState = 'idle';
+    votes       = {};
+    totalVotes  = 0;
+    // Hide popup if still showing
+    const popup = document.getElementById('meme-popup');
+    if (popup.style.display !== 'none') {
+      popup.style.animation = 'meme-yeet 0.35s cubic-bezier(0.55,0,1,0.45) forwards';
+      setTimeout(() => {
+        popup.style.display   = 'none';
+        popup.style.animation = '';
+        popup.style.transform = '';
+        popup.style.maxWidth  = '';
+        popup.querySelector('.meme-card').classList.remove('rainbow');
+      }, 370);
+    }
+  }, SHOW_MS);
+}
+
+// ════════════════════════════════════════════════════════════════
+// HAND HELPER FUNCTIONS
+// ════════════════════════════════════════════════════════════════
+const tipIdx  = [4,  8,  12, 16, 20];
+const pipIdx  = [3,  6,  10, 14, 18];
+const mcpIdx  = [2,  5,   9, 13, 17];
+
+function fingerUp(h, f) {
+  if (f === 0) return h[4].y < h[3].y; // thumb: up means smaller y
+  return h[tipIdx[f]].y < h[pipIdx[f]].y;
+}
+
+function isThumbsUp(h) {
+  // Thumb up, all 4 fingers curled
+  return fingerUp(h,0) && !fingerUp(h,1) && !fingerUp(h,2) && !fingerUp(h,3) && !fingerUp(h,4);
+}
+
+function isFist(h) {
+  return !fingerUp(h,1) && !fingerUp(h,2) && !fingerUp(h,3) && !fingerUp(h,4);
+}
+
+function isPeaceSign(h) {
+  return fingerUp(h,1) && fingerUp(h,2) && !fingerUp(h,3) && !fingerUp(h,4);
+}
+
+function isIndexPointing(h) {
+  return fingerUp(h,1) && !fingerUp(h,2) && !fingerUp(h,3) && !fingerUp(h,4);
+}
+
+function isIndexOnlyExtended(h) {
+  return fingerUp(h,1) && !fingerUp(h,2) && !fingerUp(h,3) && !fingerUp(h,4);
+}
+
+function isHandRaisedStraight(h, sens) {
+  // Wrist in upper 45% of frame, middle finger tip above wrist
+  return h[0].y < 0.45 - (sens-5)*0.02 && h[12].y < h[0].y;
+}
+
+// ════════════════════════════════════════════════════════════════
+// FACE HELPER FUNCTIONS
+// ════════════════════════════════════════════════════════════════
+function eyeAR(L, side) {
+  if (side === 'left') {
+    const v1 = dist2d(L[386], L[374]);
+    const v2 = dist2d(L[385], L[380]);
+    const h  = dist2d(L[362], L[263]);
+    return (v1 + v2) / (2 * h + 1e-6);
+  } else {
+    const v1 = dist2d(L[159], L[145]);
+    const v2 = dist2d(L[158], L[153]);
+    const h  = dist2d(L[33],  L[133]);
+    return (v1 + v2) / (2 * h + 1e-6);
+  }
+}
+
+function mouthOpenR(L) {
+  const vert  = dist2d(L[13], L[14]);
+  const horiz = dist2d(L[61], L[291]);
+  return vert / (horiz + 1e-6);
+}
+
+function getSmileRatio(L) {
+  // Positive = corners raised vs center upper lip
+  return ((L[61].y + L[291].y) / 2 - L[13].y);
+}
+
+function detectTongue(L, sens) {
+  // Multi-factor tongue detection for accuracy:
+  // 1. Mouth must be reasonably open
+  // 2. Landmark 17 (lower inner lip / tongue area) must be below lower lip lm 14
+  // 3. Lower lip must protrude forward (negative z with refined landmarks)
+  // 4. Tongue landmark cluster (13-17) spread check
+  const mOpen = mouthOpenR(L);
+  if (mOpen < 0.28 - (sens-5)*0.018) return false;
+
+  const tongueArea = L[17];
+  const lowerLip   = L[14];
+  const upperLip   = L[13];
+  if (!tongueArea) return false;
+
+  // Tongue area should be below lower inner lip in normalized coords
+  const belowLowerLip = tongueArea.y > lowerLip.y + 0.005;
+
+  // Additional: check that landmark 17 z is meaningfully forward
+  const tongueForward = (tongueArea.z !== undefined) ? tongueArea.z < -0.015 : true;
+
+  // Check vertical extent of inner-lip cluster
+  const innerHeight = Math.abs(upperLip.y - tongueArea.y);
+  const faceHeight  = Math.abs(L[10].y - L[152].y);
+  const relHeight   = innerHeight / (faceHeight + 1e-6);
+  const heightOk    = relHeight > 0.06 - (sens-5)*0.004;
+
+  return belowLowerLip && tongueForward && heightOk;
+}
+
+function dist2d(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+// ════════════════════════════════════════════════════════════════
+// COMBO TRACKING
+// ════════════════════════════════════════════════════════════════
+let comboCount = 0, comboTimeout = null;
+
+function bumpCombo(g) {
+  comboCount++;
+  if (comboTimeout) clearTimeout(comboTimeout);
+  comboTimeout = setTimeout(() => { comboCount = 0; }, 4000);
+
+  const el = document.getElementById('combo-counter');
+  if (comboCount >= 2) {
+    el.style.display = 'block';
+    const labels = ['','','2x COMBO!','3x FIRE!','4x CHAOS!','5x UNHINGED!'];
+    el.textContent = comboCount >= 5 ? comboCount + 'x 🤯 INSANE!' : (labels[comboCount] || comboCount + 'x 💥');
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    el.style.animation = 'combo-pop 0.4s cubic-bezier(0.34,1.56,0.64,1)';
+    clearTimeout(el._hide);
+    el._hide = setTimeout(() => { el.style.display = 'none'; }, 1800);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// FIRE GESTURE
+// ════════════════════════════════════════════════════════════════
+function fireGesture(id, fromWindow = false) {
+  const now = Date.now();
+  // Cooldown only applies to direct (non-window) calls — window already
+  // enforces its own SHOW_MS lock via windowState === 'showing'
+  if (!fromWindow && cooldowns[id] && now - cooldowns[id] < settings.cooldown * 1000) return;
+  cooldowns[id] = now;
+  triggerCount++;
+  document.getElementById('stat-triggers').textContent = triggerCount;
+
+  const g    = GESTURES[id];
+  const slot = gestureSlots[id];
+
+  // Flash gesture list item
+  const item = document.getElementById('gi-' + id);
+  if (item) {
+    item.classList.add('triggered');
+    setTimeout(() => item.classList.remove('triggered'), 450);
+  }
+
+  addFeedItem(g);
+  bumpCombo(g);
+
+  const camRect = canvasEl.getBoundingClientRect();
+  const cx = camRect.left + camRect.width  * 0.5;
+  const cy = camRect.top  + camRect.height * 0.38;
+
+  screenFlash(g.color);
+  triggerRipple(camRect.width * 0.5, camRect.height * 0.38, g.color);
+  particleBurst(cx, cy, g.color);
+
+  if (slot?.imageDataURL) {
+    showMemePopup(id, slot, g, id === 15);
+    if (slot.audioDataURL) playAudio(slot.audioDataURL);
+  }
+
+  toast(g.emoji + ' ' + g.name, 'info');
+}
+
+// ════════════════════════════════════════════════════════════════
+// MEME POPUP — TikTok chaos edition
+// ════════════════════════════════════════════════════════════════
+const ENTRANCE_ANIMS = ['meme-slam','meme-slam-left','meme-slam-right','meme-slam-top'];
+
+// Extra entrance keyframes
+(function injectKF() {
+  const s = document.createElement('style');
+  s.textContent = `
+    @keyframes meme-slam-left {
+      0%   { transform:translateX(-130%) rotate(-15deg) scale(0.7); opacity:0; filter:brightness(3) saturate(3); }
+      65%  { transform:translateX(8%)    rotate(2deg)  scale(1.08); opacity:1; filter:brightness(1.4); }
+      100% { transform:translateX(0)     rotate(0deg)  scale(1);    opacity:1; filter:brightness(1); }
+    }
+    @keyframes meme-slam-right {
+      0%   { transform:translateX(130%)  rotate(15deg)  scale(0.7); opacity:0; filter:brightness(3) saturate(3); }
+      65%  { transform:translateX(-8%)   rotate(-2deg)  scale(1.08); opacity:1; filter:brightness(1.4); }
+      100% { transform:translateX(0)     rotate(0deg)   scale(1);    opacity:1; filter:brightness(1); }
+    }
+    @keyframes meme-slam-top {
+      0%   { transform:translateY(-130%) rotate(-8deg) scale(0.7); opacity:0; filter:brightness(3) saturate(3); }
+      65%  { transform:translateY(6%)    rotate(2deg)  scale(1.1);  opacity:1; filter:brightness(1.4); }
+      100% { transform:translateY(0)     rotate(0deg)  scale(1);    opacity:1; filter:brightness(1); }
+    }
+    @keyframes meme-nuke {
+      0%   { transform:translate(-50%,-50%) scale(0.04) rotate(-8deg); opacity:0;   filter:brightness(8) saturate(5) blur(6px); }
+      40%  { transform:translate(-50%,-50%) scale(1.22) rotate(3deg);  opacity:1;   filter:brightness(2) saturate(2) blur(0); }
+      65%  { transform:translate(-50%,-50%) scale(0.96) rotate(-1deg); opacity:1;   filter:brightness(1.3); }
+      82%  { transform:translate(-50%,-50%) scale(1.05) rotate(0.5deg); }
+      100% { transform:translate(-50%,-50%) scale(1)    rotate(0deg);  opacity:1;   filter:brightness(1); }
+    }
+  `;
+  document.head.appendChild(s);
+})();
+
+function showMemePopup(id, slot, g, centred = false) {
+  const popup = document.getElementById('meme-popup');
+  const img   = document.getElementById('meme-popup-img');
+  const card  = popup.querySelector('.meme-card');
+  const cam   = document.getElementById('cam-container');
+
+  img.src = slot.imageDataURL;
+
+  // Theme border + glow
+  card.style.borderColor = g.color;
+  card.style.boxShadow =
+    `0 0 28px ${g.color}bb, 0 0 90px ${g.color}44, 0 24px 60px rgba(0,0,0,0.85),
+     inset 0 1px 0 rgba(255,255,255,0.1)`;
+
+  // Rainbow border on combos
+  if (comboCount >= 3) card.classList.add('rainbow');
+  else card.classList.remove('rainbow');
+
+  // Size — centred gets bigger
+  const baseW = centred ? 160 + settings.popupSize * 42 : 110 + settings.popupSize * 38;
+  img.style.maxWidth = baseW + 'px';
+  popup.style.maxWidth = (baseW + 20) + 'px';
+
+  if (centred) {
+    // ── DEAD CENTRE of the cam container ──────────────────────
+    popup.style.left      = '50%';
+    popup.style.top       = '50%';
+    popup.style.transform = 'translate(-50%, -50%)';
+
+    // Nuke entrance: explodes from a tiny dot in the very centre
+    popup.style.display   = 'block';
+    popup.style.animation = 'none';
+    void popup.offsetWidth;
+    popup.style.animation = 'meme-nuke 0.55s cubic-bezier(0.18,1.5,0.4,1) forwards';
+
+    // 3× as many particles + double flash for index-up trigger
+    const camRect = canvasEl.getBoundingClientRect();
+    particleBurst(camRect.left + camRect.width * 0.5, camRect.top + camRect.height * 0.5, g.color);
+    setTimeout(() => screenFlash(g.color), 80);
+
+  } else {
+    // ── Random position (all other gestures) ──────────────────
+    popup.style.transform = '';
+    const margin = 16;
+    const x = margin + Math.random() * Math.max(cam.offsetWidth - baseW - margin * 2, 10);
+    const y = margin + Math.random() * Math.max(cam.offsetHeight * 0.52 - 220, 10);
+    popup.style.left = x + 'px';
+    popup.style.top  = y + 'px';
+
+    const anim = ENTRANCE_ANIMS[Math.floor(Math.random() * ENTRANCE_ANIMS.length)];
+    popup.style.display   = 'block';
+    popup.style.animation = 'none';
+    void popup.offsetWidth;
+    popup.style.animation = `${anim} 0.5s cubic-bezier(0.22,1.4,0.36,1) forwards`;
+  }
+
+  // Emoji rain always
+  emojiRain(cam, g.emoji);
+
+  // Auto-hide: skip when called from resolveWindow — it manages dismissal
+  if (memePopupTimeout) clearTimeout(memePopupTimeout);
+  if (!centred) {
+    // Non-centred popups self-dismiss after 3.4s
+    memePopupTimeout = setTimeout(() => {
+      popup.style.animation = 'meme-yeet 0.35s cubic-bezier(0.55,0,1,0.45) forwards';
+      setTimeout(() => {
+        popup.style.display    = 'none';
+        popup.style.animation  = '';
+        popup.style.transform  = '';
+        popup.style.maxWidth   = '';
+        card.classList.remove('rainbow');
+      }, 370);
+    }, 3400);
+  }
+  // Centred (G15 / window winner) popup lifetime is controlled by resolveWindow → SHOW_MS
+}
+
+// ── SCREEN FLASH ─────────────────────────────────────────────
+function screenFlash(color) {
+  const el = document.getElementById('screen-flash');
+  el.style.background = color;
+  el.className = '';
+  void el.offsetWidth;
+  el.className = 'flash';
+}
+
+// ── RIPPLE ───────────────────────────────────────────────────
+function triggerRipple(x, y, color) {
+  const cam = document.getElementById('cam-container');
+  const r   = document.createElement('div');
+  r.className = 'trigger-ripple';
+  r.style.cssText = `left:${x}px;top:${y}px;border-color:${color};box-shadow:0 0 16px ${color};`;
+  cam.appendChild(r);
+  setTimeout(() => r.remove(), 760);
+}
+
+// ── EMOJI RAIN ───────────────────────────────────────────────
+function emojiRain(container, emoji) {
+  const count = 7 + Math.floor(Math.random() * 5);
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => {
+      const el  = document.createElement('div');
+      el.className = 'emoji-rain';
+      const dur = (1.0 + Math.random() * 0.9).toFixed(2);
+      el.textContent = emoji;
+      el.style.cssText =
+        `left:${4 + Math.random() * 88}%;` +
+        `font-size:${20 + Math.random() * 20}px;` +
+        `animation:emoji-fall ${dur}s linear forwards;`;
+      container.appendChild(el);
+      setTimeout(() => el.remove(), parseFloat(dur) * 1000 + 120);
+    }, i * 75);
+  }
+}
+
+function playAudio(dataURL) {
+  try {
+    const a = new Audio(dataURL);
+    a.volume = 0.8;
+    a.play().catch(() => {});
+  } catch(_) {}
+}
+
+// ════════════════════════════════════════════════════════════════
+// FEED
+// ════════════════════════════════════════════════════════════════
+function addFeedItem(g) {
+  const feed = document.getElementById('trigger-feed');
+  const item = document.createElement('div');
+  item.className = 'feed-item';
+  const t = new Date().toLocaleTimeString('en-US', { hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  item.innerHTML =
+    `<span class="feed-emoji">${g.emoji}</span>` +
+    `<span class="feed-name" style="color:${g.color}">${g.name}</span>` +
+    `<span class="feed-time">${t}</span>`;
+  feed.insertBefore(item, feed.firstChild);
+  while (feed.children.length > 25) feed.removeChild(feed.lastChild);
+}
+
+// ════════════════════════════════════════════════════════════════
+// FPS COUNTER
+// ════════════════════════════════════════════════════════════════
+function fpsLoop() {
+  const now = Date.now();
+  if (now - fpsLast >= 1000) {
+    document.getElementById('stat-fps').textContent = fpsCounter;
+    fpsCounter = 0; fpsLast = now;
+  }
+  if (camRunning) requestAnimationFrame(fpsLoop);
+}
+
+// ════════════════════════════════════════════════════════════════
+// IMPORT / EXPORT
+// ════════════════════════════════════════════════════════════════
+function exportPack() {
+  const pack = {
+    version: '1.1',
+    settings: { ...settings },
+    gestures: {}
+  };
+  for (const [id, slot] of Object.entries(gestureSlots)) {
+    if (slot) pack.gestures[id] = { imageDataURL: slot.imageDataURL, audioDataURL: slot.audioDataURL, audioName: slot.audioName };
+  }
+  const blob = new Blob([JSON.stringify(pack)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'memic-pack.json'; a.click();
+  URL.revokeObjectURL(url);
+  toast('📦 Pack exported!', 'success');
+}
+
+document.getElementById('import-btn').onclick   = () => document.getElementById('import-file-input').click();
+document.getElementById('export-btn').onclick   = exportPack;
+
+document.getElementById('import-file-input').addEventListener('change', function () {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const pack = JSON.parse(ev.target.result);
+      // Restore settings
+      if (pack.settings) {
+        Object.assign(settings, pack.settings);
+        document.getElementById('r-sens').value  = settings.sensitivity;
+        document.getElementById('r-cd').value    = settings.cooldown;
+        document.getElementById('r-psize').value = settings.popupSize;
+        ['r-sens','r-cd','r-psize'].forEach(id => {
+          const el = document.getElementById(id);
+          const pct = ((parseInt(el.value)-parseInt(el.min))/(parseInt(el.max)-parseInt(el.min))*100).toFixed(1)+'%';
+          el.style.setProperty('--pct', pct);
+        });
+        document.getElementById('v-sens').textContent  = settings.sensitivity;
+        document.getElementById('v-cd').textContent    = settings.cooldown;
+        document.getElementById('v-psize').textContent = settings.popupSize;
+        document.getElementById('toggle-mesh').classList.toggle('on', settings.showMesh);
+        document.getElementById('toggle-hands-vis').classList.toggle('on', settings.showHandsVis);
+        document.getElementById('toggle-pose-vis').classList.toggle('on', settings.showPoseVis);
+      }
+      // Restore gesture slots
+      if (pack.gestures) {
+        gestureSlots = {};
+        for (const [id, slot] of Object.entries(pack.gestures)) {
+          gestureSlots[parseInt(id)] = slot;
+        }
+      }
+      buildGestureList();
+      const count = Object.keys(gestureSlots).length;
+      toast('📦 Pack imported! ' + count + ' meme' + (count!==1?'s':'') + ' loaded', 'success');
+    } catch(err) {
+      toast('❌ Invalid or corrupted pack file', 'warn');
+    }
+  };
+  reader.readAsText(file);
+  this.value = '';
+});
+
+// ════════════════════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════════════════════
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => {
+    el.style.animation = 'toast-out 0.3s ease forwards';
+    setTimeout(() => el.remove(), 300);
+  }, 2800);
+}
+
+// ════════════════════════════════════════════════════════════════
+// PARTICLE BURST — mega edition
+// ════════════════════════════════════════════════════════════════
+const COLORS = ['#ff2d78','#00f5ff','#39ff14','#bf5fff','#ffe600','#ff6b00','#fff'];
+
+function particleBurst(cx, cy, accentColor) {
+  const count = 28;
+  for (let i = 0; i < count; i++) {
+    const p      = document.createElement('div');
+    const ang    = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+    const dist   = 70 + Math.random() * 130;
+    const col    = i < 3 ? accentColor : COLORS[Math.floor(Math.random() * COLORS.length)];
+    const size   = 5 + Math.random() * 9;
+    const isRect = Math.random() > 0.6;
+    const dur    = (0.5 + Math.random() * 0.55).toFixed(2);
+    p.style.cssText =
+      `position:fixed;pointer-events:none;z-index:300;` +
+      `left:${cx}px;top:${cy}px;` +
+      `width:${size}px;height:${isRect ? size * 0.5 : size}px;` +
+      `border-radius:${isRect ? '2px' : '50%'};` +
+      `background:${col};box-shadow:0 0 ${size+4}px ${col};` +
+      `--dx:${(Math.cos(ang)*dist).toFixed(0)}px;` +
+      `--dy:${(Math.sin(ang)*dist).toFixed(0)}px;` +
+      `animation:particle-fly ${dur}s ease-out forwards;` +
+      `transform:rotate(${Math.random()*360}deg);`;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), parseFloat(dur) * 1000 + 50);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════════
+buildGestureList();
+toast('👋 Welcome to MEMIC! Hit "Start Cam" to go chaotic', 'info');
+</script>
+</body>
+</html>
